@@ -1,80 +1,15 @@
-/*!
- * body-parser
- * Copyright(c) 2014-2015 Douglas Christopher Wilson
- * MIT Licensed
- */
+'use strict';
 
-'use strict'
+var bind = require('function-bind');
+var $TypeError = require('es-errors/type');
 
-/**
- * @typedef Parsers
- * @type {function}
- * @property {function} json
- * @property {function} raw
- * @property {function} text
- * @property {function} urlencoded
- */
+var $call = require('./functionCall');
+var $actualApply = require('./actualApply');
 
-/**
- * Module exports.
- * @type {Parsers}
- */
-
-exports = module.exports = bodyParser
-
-/**
- * JSON parser.
- * @public
- */
-
-Object.defineProperty(exports, 'json', {
-  configurable: true,
-  enumerable: true,
-  get: () => require('./lib/types/json')
-})
-
-/**
- * Raw parser.
- * @public
- */
-
-Object.defineProperty(exports, 'raw', {
-  configurable: true,
-  enumerable: true,
-  get: () => require('./lib/types/raw')
-})
-
-/**
- * Text parser.
- * @public
- */
-
-Object.defineProperty(exports, 'text', {
-  configurable: true,
-  enumerable: true,
-  get: () => require('./lib/types/text')
-})
-
-/**
- * URL-encoded parser.
- * @public
- */
-
-Object.defineProperty(exports, 'urlencoded', {
-  configurable: true,
-  enumerable: true,
-  get: () => require('./lib/types/urlencoded')
-})
-
-/**
- * Create a middleware to parse json and urlencoded bodies.
- *
- * @param {object} [options]
- * @return {function}
- * @deprecated
- * @public
- */
-
-function bodyParser () {
-  throw new Error('The bodyParser() generic has been split into individual middleware to use instead.')
-}
+/** @type {(args: [Function, thisArg?: unknown, ...args: unknown[]]) => Function} TODO FIXME, find a way to use import('.') */
+module.exports = function callBindBasic(args) {
+	if (args.length < 1 || typeof args[0] !== 'function') {
+		throw new $TypeError('a function is required');
+	}
+	return $actualApply(bind, $call, args);
+};
