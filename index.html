@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendify - Login</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="main-container">
+        <h1>Student Login</h1>
+        <div class="container">
+            <div>
+                <label for="studentId">Student ID:</label>
+                <input type="text" id="studentId" placeholder="Enter your ID">
+            </div>
+            <br>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Enter your password">
+            </div>
+            <br>
+            <button id="loginBtn">Login</button>
+            <p id="statusMessage"></p>
+            <p>Don't have an account? <a href="/register.html">Register here</a></p>
+        </div>
+    </div>
+
+    <script>
+        // Redirect if already logged in
+        if (localStorage.getItem('studentId')) {
+            window.location.href = '/portal.html';
+        }
+
+        const loginBtn = document.getElementById('loginBtn');
+        const studentIdInput = document.getElementById('studentId');
+        const passwordInput = document.getElementById('password');
+        const statusMessage = document.getElementById('statusMessage');
+
+        loginBtn.addEventListener('click', async () => {
+            const studentId = studentIdInput.value;
+            const password = passwordInput.value;
+
+            if (!studentId || !password) {
+                statusMessage.textContent = 'Please fill out all fields.';
+                return;
+            }
+
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId, password })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Store the studentId in the browser's local storage
+                localStorage.setItem('studentId', result.studentId);
+                statusMessage.style.color = 'green';
+                statusMessage.textContent = result.message;
+                // Redirect to the main portal page
+                window.location.href = '/portal.html';
+            } else {
+                statusMessage.style.color = 'red';
+                statusMessage.textContent = result.message;
+            }
+        });
+    </script>
+</body>
+</html>

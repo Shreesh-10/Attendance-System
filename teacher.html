@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendify - Teacher Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
+    <style>
+        #qrcode { width: 256px; height: 256px; margin: 1em auto; border: 5px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <div class="main-container" style="max-width: 800px;">
+        <h1>Teacher Dashboard</h1>
+        <div class="container">
+            <h2>Start Attendance Session</h2>
+            <p>Select a subject and generate a QR code. The code will be valid for 5 minutes.</p>
+            <div>
+                <label for="sessionSubject">Subject:</label>
+                <select id="sessionSubject">
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Math">Math</option>
+                    <option value="Computer Science">Computer Science</option>
+                </select>
+            </div>
+            <br>
+            <button id="generateQrBtn">Generate Session QR Code</button>
+            <div id="qrcode"></div>
+            <p id="sessionStatus" style="text-align: center; font-weight: bold;"></p>
+        </div>
+        <div class="container">
+            <h2>Attendance Records</h2>
+            <button id="refreshBtn">Refresh Data</button>
+            <table>
+                <thead><tr><th>Student ID</th><th>Subject</th><th>Timestamp</th></tr></thead>
+                <tbody id="attendanceData"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/js/qrcode.min.js"></script>
+    <script>
+        let baseUrl = ''; // Variable to store the server's base URL
+
+        // Fetch the server configuration on page load
+        async function getConfig() {
+            try {
+                const response = await fetch('/config');
+                const config = await response.json();
+                baseUrl = config.baseUrl;
+            } catch (error) {
+                console.error('Failed to get server config:', error);
+                sessionStatus.textContent = 'Error: Could not connect to server.';
+            }
+        }
+
+        const generateQrBtn = document.getElementById('generateQrBtn');
+        const sessionSubjectSelect = document.getElementById('sessionSubject');
+        const qrcodeContainer = document.getElementById('qrcode');
+        const sessionStatus = document.getElementById('sessionStatus');
+        let qrcode = new QRCode(qrcodeContainer, { width: 256, height: 256 });
+
+        generateQrBtn.addEventListener('click', async () => {
+            if (!baseUrl) {
+                sessionStatus.textContent = 'Server configuration not loaded. Please refresh.';
+                return;
+            }
+            const subject = sessionSubjectSelect.value;
+            sessionStatus.textContent = 'Generating...';
+            const response = await fetch('/teacher/start-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                // DYNAMICALLY create the URL
+                const portalUrl = `${baseUrl}/portal.html?token=${result.token}`;
+                qrcode.makeCode(portalUrl);
+                sessionStatus.textContent = `Session for ${subject} is active!`;
+            } else {
+                sessionStatus.textContent = `Error: ${result.message}`;
+            }
+        });
+
+        const refreshButton = document.getElementById('refreshBtn');
+        const attendanceTableBody = document.getElementById('attendanceData');
+        async function fetchAttendance() {
+            try {
+                const response = await fetch('/get-attendance');
+                const data = await response.json();
+                attendanceTableBody.innerHTML = '';
+                data.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${record.studentId}</td><td>${record.subject}</td><td>${new Date(record.timestamp).toLocaleString()}</td>`;
+                    attendanceTableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Failed to fetch attendance data:', error);
+            }
+        }
+        
+        // Run on page load
+        window.onload = () => {
+            getConfig(); // Get the base URL
+            fetchAttendance(); // Fetch attendance records
+        };
+        refreshButton.addEventListener('click', fetchAttendance);
+    </script>
+</body>
+</html>

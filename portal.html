@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendify - Student Portal</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+    <div class="main-container" style="max-width: 600px;">
+        <h1>Student Portal</h1>
+        <p>Welcome, <strong id="welcomeId"></strong>! <button id="logoutBtn" style="float: right; padding: 5px 10px; background-color: #dc3545;">Logout</button></p>
+
+        <div class="container">
+            <h2>Mark Attendance</h2>
+            <p id="tokenStatus" style="font-weight: bold; text-align: center;">Verifying session...</p>
+            <div id="markAttendanceContent" style="display: none;">
+                <p>Session Subject: <strong id="sessionSubject"></strong></p>
+                <button id="attendanceBtn">Mark My Attendance</button>
+                <p id="statusMessage"></p>
+            </div>
+        </div>
+
+        <div class="container">
+            <h2>My Attendance History</h2>
+            <button id="checkBtn">Refresh My Records</button>
+            <table>
+                <thead><tr><th>Subject</th><th>Timestamp</th></tr></thead>
+                <tbody id="studentRecords"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const loggedInStudentId = localStorage.getItem('studentId');
+        if (!loggedInStudentId) window.location.href = '/';
+
+        // --- SETUP ---
+        document.getElementById('welcomeId').textContent = loggedInStudentId;
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('studentId');
+            window.location.href = '/';
+        });
+
+        // --- NEW: Token Verification ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const attendanceToken = urlParams.get('token');
+        const tokenStatusEl = document.getElementById('tokenStatus');
+        const markAttendanceContentEl = document.getElementById('markAttendanceContent');
+        const sessionSubjectEl = document.getElementById('sessionSubject');
+
+        async function verifyToken() {
+            if (!attendanceToken) {
+                tokenStatusEl.textContent = 'No attendance session token found. Please scan the QR code from your teacher.';
+                tokenStatusEl.style.color = 'red';
+                return;
+            }
+
+            const response = await fetch(`/student/verify-token?token=${attendanceToken}`);
+            const result = await response.json();
+
+            if (response.ok) {
+                tokenStatusEl.style.display = 'none';
+                markAttendanceContentEl.style.display = 'block';
+                sessionSubjectEl.textContent = result.subject;
+            } else {
+                tokenStatusEl.textContent = `Error: ${result.message}`;
+                tokenStatusEl.style.color = 'red';
+            }
+        }
+
+        // --- MARK ATTENDANCE SCRIPT ---
+        const attendanceButton = document.getElementById('attendanceBtn');
+        const statusMessage = document.getElementById('statusMessage');
+
+        attendanceButton.addEventListener('click', () => {
+            statusMessage.textContent = 'Getting your location...';
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    markAttendance(loggedInStudentId, latitude, longitude);
+                },
+                () => { statusMessage.textContent = 'Unable to retrieve location.'; }
+            );
+        });
+
+        function markAttendance(studentId, lat, lon) {
+            fetch('/mark-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId, latitude: lat, longitude: lon, token: attendanceToken }) // Send the token
+            })
+            .then(res => res.json()).then(data => { statusMessage.textContent = data.message; });
+        }
+
+        // --- CHECK ATTENDANCE SCRIPT ---
+        const checkButton = document.getElementById('checkBtn');
+        const studentRecordsTableBody = document.getElementById('studentRecords');
+        async function fetchRecords() {
+            const response = await fetch(`/get-student-attendance?studentId=${loggedInStudentId}`);
+            const records = await response.json();
+            studentRecordsTableBody.innerHTML = '';
+            if (records.length === 0) {
+                studentRecordsTableBody.innerHTML = '<tr><td colspan="2">No records found.</td></tr>';
+                return;
+            }
+            records.forEach(record => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${record.subject}</td><td>${new Date(record.timestamp).toLocaleString()}</td>`;
+                studentRecordsTableBody.appendChild(row);
+            });
+        }
+        
+        // Run on page load
+        window.onload = () => {
+            verifyToken();
+            fetchRecords();
+        };
+    </script>
+</body>
+</html>

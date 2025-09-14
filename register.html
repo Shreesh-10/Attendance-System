@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendify - Register</title>
+    <link rel="stylesheet" href="/styles.css"> <!-- We will create this file next -->
+</head>
+<body>
+    <div class="main-container">
+        <h1>Create Your Account</h1>
+        <div class="container">
+            <div>
+                <label for="studentId">Student ID:</label>
+                <input type="text" id="studentId" placeholder="Enter your official ID">
+            </div>
+            <br>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Choose a password">
+            </div>
+            <br>
+            <button id="registerBtn">Register</button>
+            <p id="statusMessage"></p>
+            <p>Already have an account? <a href="/">Login here</a></p>
+        </div>
+    </div>
+
+    <script>
+        const registerBtn = document.getElementById('registerBtn');
+        const studentIdInput = document.getElementById('studentId');
+        const passwordInput = document.getElementById('password');
+        const statusMessage = document.getElementById('statusMessage');
+
+        registerBtn.addEventListener('click', async () => {
+            const studentId = studentIdInput.value;
+            const password = passwordInput.value;
+
+            if (!studentId || !password) {
+                statusMessage.textContent = 'Please fill out all fields.';
+                return;
+            }
+
+            const response = await fetch('/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentId, password })
+            });
+
+            const result = await response.json();
+            statusMessage.textContent = result.message;
+
+            if (response.ok) {
+                statusMessage.style.color = 'green';
+                setTimeout(() => {
+                    window.location.href = '/'; // Redirect to login page on success
+                }, 2000);
+            } else {
+                statusMessage.style.color = 'red';
+            }
+        });
+    </script>
+</body>
+</html>
